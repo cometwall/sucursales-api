@@ -13,6 +13,42 @@ const authClient = createClient(url, publishableKey, {
     auth: {persistSession: false, autoRefreshToken: false}
 });
 
+async function verificarUsuario(req: Request) {
+    const authorization = req.headers.get("Authorization");
+    const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+
+    if (!token) {
+        return {
+            error: "Falta el token Bearer.",
+            status: 401,
+        };
+    }
+
+    const { data, error } = await authClient.auth.getUser(token);
+
+    if (error || !data.user) {
+        return {
+            error: "Token inválido o expirado.",
+            status: 401,
+        };
+    }
+
+    const { data: perfil, error: perfilError } = await admin
+        .from("usuario")
+        .select("id, nombre_usuario, es_admin, id_sucursal")
+        .eq("auth_user_id", data.user.id)
+        .maybeSingle();
+
+    if (perfilError || !perfil) {
+        return {
+            error: "No se encontró el perfil del usuario.",
+            status: 403,
+        };
+    }
+
+    return { perfil };
+}
+
 const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": 
@@ -48,6 +84,13 @@ Deno.serve(async (req) => {
     try {
         //POST /Usuarios/registro
         if(path.endsWith("/registro") && req.method === "POST"){
+            const auth = await verificarUsuario(req);
+            if("error" in auth){
+                return response({error: auth.error}, auth.status);
+            }
+            if(auth.perfil.es_admin !== true){
+                return response({error: "No tienes permisos para realizar esta acción."}, 403);
+            }
             const body = await req.json();
             const username = 
              typeof body.nombre_usuario === "string"
