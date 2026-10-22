@@ -53,7 +53,7 @@ const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": 
      "authorization, apikey, content-type, x-client-info",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT"
 }
 
 function response(body: unknown, status = 200){
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
              ? body.nombre_usuario.trim().toLowerCase()
              : "";
             const password = body.password;
-            const idSucursal = body.id_sucursal;
+            const idSucursal = auth.perfil.id_sucursal;
 
             if (!/^[a-z0-9._-]{3,32}$/.test(username)){
                 return response({
